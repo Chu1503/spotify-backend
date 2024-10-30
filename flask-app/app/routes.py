@@ -1,48 +1,33 @@
+# app/routes.py
+from flask import Blueprint, session, redirect, url_for
 import requests
-from flask import Flask, redirect, request, session, url_for
-from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
-load_dotenv()
-
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY')  # Get the secret key from .env
-
-CLIENT_ID = os.getenv('CLIENT_ID')  # Get the client ID from .env
-CLIENT_SECRET = os.getenv('CLIENT_SECRET')  # Get the client secret from .env
-REDIRECT_URI = 'http://localhost:5000/callback'
-
-# Authorization URL
-AUTH_URL = "https://accounts.spotify.com/authorize"
-TOKEN_URL = "https://accounts.spotify.com/api/token"
+main_bp = Blueprint('main', __name__)
 USER_PROFILE_URL = "https://api.spotify.com/v1/me"
 
-@app.route('/')
+@main_bp.route('/')
 def index():
-    # Check if the user is already logged in
     access_token = session.get('access_token')
     if not access_token:
         return '<a href="/login">Login to Spotify</a>'
 
-    # User is logged in, fetch and display profile information
+    # Fetch user profile information
     headers = {'Authorization': f'Bearer {access_token}'}
     user_profile_response = requests.get(USER_PROFILE_URL, headers=headers)
     user_profile = user_profile_response.json()
 
-    # Safely extract user profile information
+    # Extract profile information safely
     followers_count = user_profile.get('followers', {}).get('total', 0)
-    display_name = user_profile.get('display_name', 'Unknown User')  # Fallback if not available
+    display_name = user_profile.get('display_name', 'Unknown User')
     profile_image_url = user_profile['images'][0]['url'] if user_profile.get('images') else 'https://via.placeholder.com/100'
 
     # Fetch user playlists to get the count
     playlists_response = requests.get(f'{USER_PROFILE_URL}/playlists', headers=headers)
     playlists_data = playlists_response.json()
-
-    # Count the number of playlists
     playlists_count = len(playlists_data.get('items', []))
 
-    # Display user profile information with the number of playlists
+    # Display user profile and playlists count
     return f'''
         <h1>User Profile</h1>
         <img src="{profile_image_url}" alt="Profile Picture" style="width:100px;height:100px;">
@@ -53,43 +38,13 @@ def index():
         <a href="/logout">Logout</a>
     '''
 
-@app.route('/login')
-def login():
-    auth_query = f'{AUTH_URL}?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=user-read-private user-read-email playlist-read-private'
-    return redirect(auth_query)
-
-@app.route('/callback')
-def callback():
-    code = request.args.get('code')
-    token_data = {
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': REDIRECT_URI,
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-    }
-
-    # Get access token
-    response = requests.post(TOKEN_URL, data=token_data)
-    response_data = response.json()
-    access_token = response_data.get('access_token')
-
-    # Store access token in session
-    session['access_token'] = access_token
-
-    # Redirect to the homepage with user profile after login
-    return redirect(url_for('index'))
-
-@app.route('/playlists')
+@main_bp.route('/playlists')
 def playlists():
-    # Use the access token from the session
     access_token = session.get('access_token')
     if not access_token:
-        return redirect(url_for('index'))
+        return redirect(url_for('main.index'))
 
     headers = {'Authorization': f'Bearer {access_token}'}
-    
-    # Fetch user playlists
     playlists_response = requests.get(f'{USER_PROFILE_URL}/playlists', headers=headers)
     playlists_data = playlists_response.json()
 
@@ -99,7 +54,6 @@ def playlists():
     for playlist in playlists_list:
         playlist_name = playlist['name']
         playlist_tracks_count = playlist['tracks']['total']
-        # Get the playlist image, default to a placeholder if not available
         playlist_image_url = playlist['images'][0]['url'] if playlist['images'] else 'https://via.placeholder.com/150'
         playlists_info += f'''
             <div style="margin-bottom: 20px;">
@@ -108,17 +62,14 @@ def playlists():
             </div>
         '''
 
-    # Display playlists information
+    # Display playlists
     return f'''
         <h1>Your Playlists</h1>
         {playlists_info}
-        <a href="/">Back to Home</a>  <!-- This will take you back to the home page -->
+        <a href="/">Back to Home</a>
     '''
 
-@app.route('/logout')
+@main_bp.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    return redirect(url_for('main.index'))
