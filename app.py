@@ -69,10 +69,10 @@ def profile():
     
     # Prepare profile information for response
     profile_info = {
-        "name": profile_data.get("display_name"),
-        "followers": profile_data.get("followers", {}).get("total"),
-        "profile_pic": profile_data["images"][0]["url"] if profile_data.get("images") else None,
-        "playlists": playlists_data.get("total", 0)
+        "Name": profile_data.get("display_name"),
+        "Followers": profile_data.get("followers", {}).get("total"),
+        "Pic": profile_data["images"][0]["url"] if profile_data.get("images") else None,
+        "Playlists": playlists_data.get("total", 0)
     }
     
     # Return profile information as JSON
