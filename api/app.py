@@ -14,6 +14,10 @@ CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI')
 
+@app.route('/')
+def home():
+    return "Welcome to the Spotify API App! Go to /auth/login to start."
+
 @app.route('/auth/login')
 def login():
     scope = "user-read-private user-read-email playlist-read-private"
