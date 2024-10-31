@@ -1,13 +1,14 @@
 from flask import Flask, redirect, request, session, url_for, jsonify
+from flask_cors import CORS
 import requests
 import os
 from urllib.parse import urlencode
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 app.secret_key = os.getenv("SECRET_KEY")
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
