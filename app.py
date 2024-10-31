@@ -1,53 +1,82 @@
-from flask import Flask, redirect, request, jsonify, session
+from flask import Flask, redirect, request, session, url_for, jsonify
 import requests
 import os
+from urllib.parse import urlencode
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv("SECRET_KEY")
 
-SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize'
-SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
-SPOTIFY_PROFILE_URL = 'https://api.spotify.com/v1/me'
-SPOTIFY_PLAYLISTS_URL = 'https://api.spotify.com/v1/me/playlists'
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 
-CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
-CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI')
-
-@app.route('/')
-def home():
-    return "Welcome to the Spotify API App! Go to /auth/login to start."
-
-@app.route('/auth/login')
+@app.route('/login')
 def login():
-    scope = "user-read-private user-read-email playlist-read-private"
-    auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scope}&redirect_uri={REDIRECT_URI}"
-    return redirect(auth_url)
+    # Spotify authorization URL
+    auth_url = "https://accounts.spotify.com/authorize"
+    params = {
+        "client_id": SPOTIFY_CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": SPOTIFY_REDIRECT_URI,
+        "scope": "user-read-private user-read-email user-follow-read"
+    }
+    # Redirect to Spotify's OAuth page
+    url = f"{auth_url}?{urlencode(params)}"
+    return redirect(url)
 
-@app.route('/auth/callback')
+@app.route('/callback')
 def callback():
-    code = request.args.get('code')
-    response = requests.post(SPOTIFY_TOKEN_URL, data={
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': REDIRECT_URI,
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET
-    })
-    session['token_info'] = response.json()
-    return redirect(f'{REDIRECT_URI}')
+    # Get authorization code from Spotify
+    code = request.args.get("code")
+    token_url = "https://accounts.spotify.com/api/token"
+    payload = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": SPOTIFY_REDIRECT_URI,
+        "client_id": SPOTIFY_CLIENT_ID,
+        "client_secret": SPOTIFY_CLIENT_SECRET
+    }
+    # Request access token from Spotify
+    response = requests.post(token_url, data=payload)
+    response_data = response.json()
+    
+    # Save access token to session
+    session["access_token"] = response_data.get("access_token")
+    return redirect(url_for("profile"))
 
-def get_token():
-    return session.get('token_info', {}).get('access_token')
-
-@app.route('/api/profile')
+@app.route('/profile')
 def profile():
-    token = get_token()
-    headers = {'Authorization': f'Bearer {token}'}
-    profile_data = requests.get(SPOTIFY_PROFILE_URL, headers=headers).json()
-    playlists_data = requests.get(SPOTIFY_PLAYLISTS_URL, headers=headers).json()
-    profile_data['playlists'] = playlists_data['total']
-    return jsonify(profile_data)
+    # Ensure access token is available
+    access_token = session.get("access_token")
+    if not access_token:
+        return redirect(url_for("login"))
+    
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Fetch user profile information
+    profile_url = "https://api.spotify.com/v1/me"
+    profile_response = requests.get(profile_url, headers=headers)
+    profile_data = profile_response.json()
+    
+    # Fetch user's playlists count
+    playlists_url = "https://api.spotify.com/v1/me/playlists"
+    playlists_response = requests.get(playlists_url, headers=headers)
+    playlists_data = playlists_response.json()
+    
+    # Prepare profile information for response
+    profile_info = {
+        "name": profile_data.get("display_name"),
+        "followers": profile_data.get("followers", {}).get("total"),
+        "profile_pic": profile_data["images"][0]["url"] if profile_data.get("images") else None,
+        "playlists": playlists_data.get("total", 0)
+    }
+    
+    # Return profile information as JSON
+    return jsonify(profile_info)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
