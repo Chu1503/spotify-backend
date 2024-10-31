@@ -10,7 +10,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
-# CORS configuration
+# Enable CORS for specific origin with credentials
 CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
@@ -19,7 +19,6 @@ SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 
 @app.route('/login')
 def login():
-    # Spotify authorization URL
     auth_url = "https://accounts.spotify.com/authorize"
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
@@ -27,13 +26,12 @@ def login():
         "redirect_uri": SPOTIFY_REDIRECT_URI,
         "scope": "user-read-private user-read-email user-follow-read"
     }
-    # Redirect to Spotify's OAuth page
     url = f"{auth_url}?{urlencode(params)}"
     return redirect(url)
 
+
 @app.route('/callback')
 def callback():
-    # Get authorization code from Spotify
     code = request.args.get("code")
     token_url = "https://accounts.spotify.com/api/token"
     payload = {
@@ -43,13 +41,11 @@ def callback():
         "client_id": SPOTIFY_CLIENT_ID,
         "client_secret": SPOTIFY_CLIENT_SECRET
     }
-    # Request access token from Spotify
     response = requests.post(token_url, data=payload)
     response_data = response.json()
-    
-    # Save access token to session
     session["access_token"] = response_data.get("access_token")
     return redirect(url_for("profile"))
+
 
 @app.route('/profile')
 def profile():
