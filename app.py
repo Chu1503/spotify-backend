@@ -8,8 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
 app.secret_key = os.getenv("SECRET_KEY")
+
+# CORS configuration
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
