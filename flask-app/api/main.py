@@ -8,7 +8,7 @@ CORS(app)
 
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-REDIRECT_URI = "https://spotify-auth-app.vercel.app/api/callback"  # Vercel API route
+REDIRECT_URI = "https://spotify-data-visualizer-seven.vercel.app/api/callback"  # Vercel API route
 
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
