@@ -1,5 +1,5 @@
 # app/auth.py
-from flask import Blueprint, redirect, request, session, url_for
+from flask import Blueprint, redirect, request, session, url_for, jsonify
 import requests
 import os
 
@@ -34,4 +34,5 @@ def callback():
     # Store access token in session
     session['access_token'] = access_token
 
+    # Redirect to front end after authentication
     return redirect(url_for('main.index'))
