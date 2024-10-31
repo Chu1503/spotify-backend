@@ -5,12 +5,13 @@ import os
 from urllib.parse import urlencode
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 
-# Enable CORS for specific origin with credentials
+# Enable CORS with credentials for frontend origin
 CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
@@ -19,6 +20,7 @@ SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 
 @app.route('/login')
 def login():
+    # Redirect to Spotify's authorization page
     auth_url = "https://accounts.spotify.com/authorize"
     params = {
         "client_id": SPOTIFY_CLIENT_ID,
@@ -29,9 +31,9 @@ def login():
     url = f"{auth_url}?{urlencode(params)}"
     return redirect(url)
 
-
 @app.route('/callback')
 def callback():
+    # Get the authorization code from Spotify
     code = request.args.get("code")
     token_url = "https://accounts.spotify.com/api/token"
     payload = {
@@ -41,32 +43,32 @@ def callback():
         "client_id": SPOTIFY_CLIENT_ID,
         "client_secret": SPOTIFY_CLIENT_SECRET
     }
+    # Exchange code for access token
     response = requests.post(token_url, data=payload)
     response_data = response.json()
+    
+    # Save access token in session
     session["access_token"] = response_data.get("access_token")
     return redirect(url_for("profile"))
 
-
 @app.route('/profile')
 def profile():
-    # Ensure access token is available
+    # Fetch profile if access token is present
     access_token = session.get("access_token")
     if not access_token:
         return redirect(url_for("login"))
     
     headers = {"Authorization": f"Bearer {access_token}"}
+    profile_url = "https://api.spotify.com/v1/me"
+    playlists_url = "https://api.spotify.com/v1/me/playlists"
     
     # Fetch user profile information
-    profile_url = "https://api.spotify.com/v1/me"
     profile_response = requests.get(profile_url, headers=headers)
-    profile_data = profile_response.json()
-    
-    # Fetch user's playlists count
-    playlists_url = "https://api.spotify.com/v1/me/playlists"
     playlists_response = requests.get(playlists_url, headers=headers)
+    profile_data = profile_response.json()
     playlists_data = playlists_response.json()
     
-    # Prepare profile information for response
+    # Package data for frontend
     profile_info = {
         "Name": profile_data.get("display_name"),
         "Followers": profile_data.get("followers", {}).get("total"),
@@ -74,7 +76,7 @@ def profile():
         "Playlists": playlists_data.get("total", 0)
     }
     
-    # Return profile information as JSON
+    # Return profile data as JSON
     return jsonify(profile_info)
 
 if __name__ == "__main__":
