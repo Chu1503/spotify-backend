@@ -34,5 +34,6 @@ def callback():
     # Store access token in session
     session['access_token'] = access_token
 
-    # Redirect to front end after authentication
-    return redirect(url_for('main.index'))
+    # Redirect to the profile page on the front end
+    return redirect(f"http://localhost:3000/profile?code={code}")
+
