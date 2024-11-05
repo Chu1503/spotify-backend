@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://spotify-frontend-sigma.vercel.app',
   credentials: true,
 }));
 app.use(express.json());
@@ -79,7 +79,7 @@ app.get('/callback', async (req, res) => {
     const refresh_token = response.data.refresh_token;
 
     res.redirect(
-      `http://localhost:3000/#${querystring.stringify({
+      `https://spotify-frontend-sigma.vercel.app/#${querystring.stringify({
         access_token: access_token,
         refresh_token: refresh_token,
       })}`
