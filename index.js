@@ -55,7 +55,7 @@ app.get("/login", (req, res) => {
   const authQueryParameters = querystring.stringify({
     response_type: "code",
     client_id: CLIENT_ID,
-    scope: scope,
+    scope: scope, // Ensure the scope is included here
     redirect_uri: REDIRECT_URI,
     state: state,
   });
@@ -106,7 +106,7 @@ app.get("/callback", async (req, res) => {
     // Redirect to frontend with tokens in the hash
     res.redirect(
       `https://spotify-frontend-sigma.vercel.app/#${querystring.stringify({
-      // `http://localhost:3000/#${querystring.stringify({
+        // `http://localhost:3000/#${querystring.stringify({
         access_token: access_token,
         refresh_token: refresh_token,
       })}`
