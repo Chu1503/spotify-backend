@@ -1,4 +1,3 @@
-// index.js
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -14,7 +13,8 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: "https://spotify-frontend-sigma.vercel.app",
+    // origin: "https://spotify-frontend-sigma.vercel.app",
+    origin: "http://localhost:3000",
     credentials: true,
   })
 );
@@ -26,12 +26,20 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
+// Utility Function to Generate Random String
+const generateRandomString = (length) => {
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+};
+
 // Spotify Scopes
 const scope =
   "user-read-private user-read-email playlist-read-private user-read-recently-played user-top-read playlist-modify-public playlist-modify-private playlist-read-collaborative";
-
-// Store refresh tokens associated with users
-const userTokens = {};
 
 // Route: /login
 app.get("/login", (req, res) => {
@@ -52,6 +60,7 @@ app.get("/login", (req, res) => {
     state: state,
   });
 
+  console.log("Redirecting to Spotify for authorization with state:", state);
   res.redirect(`https://accounts.spotify.com/authorize?${authQueryParameters}`);
 });
 
@@ -62,11 +71,13 @@ app.get("/callback", async (req, res) => {
   const storedState = req.cookies ? req.cookies["spotify_auth_state"] : null;
 
   if (state === null || state !== storedState) {
+    console.log("State mismatch error during callback.");
     return res.redirect(
       "/#" + querystring.stringify({ error: "state_mismatch" })
     );
   }
 
+  // Clear the state cookie
   res.clearCookie("spotify_auth_state");
 
   const authOptions = {
@@ -86,14 +97,20 @@ app.get("/callback", async (req, res) => {
   };
 
   try {
+    console.log("Requesting access token with authorization code:", code);
     const response = await axios(authOptions);
     const access_token = response.data.access_token;
     const refresh_token = response.data.refresh_token;
+    console.log("Received access token and refresh token from Spotify.");
 
-    // Store refresh_token for this user session
-    userTokens[req.sessionID] = refresh_token;
-
-    res.redirect(`https://spotify-frontend-sigma.vercel.app/`);
+    // Redirect to frontend with tokens in the hash
+    res.redirect(
+      // `https://spotify-frontend-sigma.vercel.app/#${querystring.stringify({
+        `http://localhost:3000/#${querystring.stringify({
+        access_token: access_token,
+        refresh_token: refresh_token,
+      })}`
+    );
   } catch (error) {
     console.error(
       "Error retrieving access token:",
@@ -103,10 +120,14 @@ app.get("/callback", async (req, res) => {
   }
 });
 
-// Helper Function: Refresh Access Token
-async function getAccessToken(req) {
-  const refresh_token = userTokens[req.sessionID];
-  if (!refresh_token) throw new Error("No refresh token available.");
+// Route: /refresh_token
+app.get("/refresh_token", async (req, res) => {
+  const refresh_token = req.query.refresh_token;
+  console.log("Received request to refresh token:", refresh_token);
+
+  if (!refresh_token) {
+    return res.status(400).send({ error: "refresh_token_missing" });
+  }
 
   const authOptions = {
     method: "post",
@@ -123,49 +144,19 @@ async function getAccessToken(req) {
     },
   };
 
-  const response = await axios(authOptions);
-  return response.data.access_token;
-}
-
-// Route: Fetch User Profile
-app.get("/api/me", async (req, res) => {
   try {
-    const accessToken = await getAccessToken(req);
-    const response = await axios.get("https://api.spotify.com/v1/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    res.json(response.data);
+    const response = await axios(authOptions);
+    console.log("Refreshed access token successfully.");
+    res.send({ access_token: response.data.access_token });
   } catch (error) {
-    console.error("Error fetching user profile:", error);
-    res
-      .status(400)
-      .send(
-        error.response
-          ? error.response.data
-          : { error: "failed_to_fetch_profile" }
-      );
-  }
-});
-
-// Route: Fetch User Playlists
-app.get("/api/me/playlists", async (req, res) => {
-  try {
-    const accessToken = await getAccessToken(req);
-    const response = await axios.get(
-      "https://api.spotify.com/v1/me/playlists",
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }
+    console.error(
+      "Error refreshing access token:",
+      error.response ? error.response.data : error.message
     );
-    res.json(response.data);
-  } catch (error) {
-    console.error("Error fetching user playlists:", error);
     res
       .status(400)
       .send(
-        error.response
-          ? error.response.data
-          : { error: "failed_to_fetch_playlists" }
+        error.response ? error.response.data : { error: "token_refresh_failed" }
       );
   }
 });
