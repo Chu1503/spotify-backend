@@ -1,4 +1,3 @@
-// server/index.js
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
@@ -22,8 +21,7 @@ const REDIRECT_URI = process.env.REDIRECT_URI;
 
 const generateRandomString = (length) => {
   let text = '';
-  const possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   for (let i = 0; i < length; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
@@ -42,9 +40,7 @@ app.get('/login', (req, res) => {
     state: state,
   });
 
-  res.redirect(
-    `https://accounts.spotify.com/authorize?${authQueryParameters}`
-  );
+  res.redirect(`https://accounts.spotify.com/authorize?${authQueryParameters}`);
 });
 
 app.get('/callback', async (req, res) => {
@@ -67,9 +63,7 @@ app.get('/callback', async (req, res) => {
     }),
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
-      Authorization:
-        'Basic ' +
-        Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
+      Authorization: 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
     },
   };
 
@@ -86,9 +80,7 @@ app.get('/callback', async (req, res) => {
     );
   } catch (error) {
     console.error(error);
-    res.redirect(
-      '/#' + querystring.stringify({ error: 'invalid_token' })
-    );
+    res.redirect('/#' + querystring.stringify({ error: 'invalid_token' }));
   }
 });
 
@@ -103,9 +95,7 @@ app.get('/refresh_token', async (req, res) => {
     }),
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
-      Authorization:
-        'Basic ' +
-        Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
+      Authorization: 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
     },
   };
 
