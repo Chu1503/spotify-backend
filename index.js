@@ -55,7 +55,7 @@ app.get("/login", (req, res) => {
   const authQueryParameters = querystring.stringify({
     response_type: "code",
     client_id: CLIENT_ID,
-    scope: scope, // Ensure the scope is included here
+    scope: scope,
     redirect_uri: REDIRECT_URI,
     state: state,
   });
