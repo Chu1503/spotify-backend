@@ -1,18 +1,20 @@
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
-const querystring = require('querystring');
-const dotenv = require('dotenv');
+const express = require("express");
+const axios = require("axios");
+const cors = require("cors");
+const querystring = require("querystring");
+const dotenv = require("dotenv");
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({
-  origin: 'https://spotify-frontend-sigma.vercel.app',
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: "https://spotify-frontend-sigma.vercel.app", // Vercel frontend URL
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -20,57 +22,65 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
 const generateRandomString = (length) => {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < length; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
 };
 
-const scope = 'user-read-private user-read-email playlist-read-private user-read-recently-played user-top-read playlist-modify-public playlist-modify-private playlist-read-collaborative';
+const scope =
+  "user-read-private user-read-email playlist-read-private user-read-recently-played user-top-read playlist-modify-public playlist-modify-private playlist-read-collaborative";
 
-app.get('/login', (req, res) => {
+app.get("/login", (req, res) => {
   const state = generateRandomString(16);
   const authQueryParameters = querystring.stringify({
-    response_type: 'code',
+    response_type: "code",
     client_id: CLIENT_ID,
     scope: scope,
     redirect_uri: REDIRECT_URI,
     state: state,
   });
 
+  console.log("Redirecting to Spotify for authorization with state:", state);
   res.redirect(`https://accounts.spotify.com/authorize?${authQueryParameters}`);
 });
 
-app.get('/callback', async (req, res) => {
+app.get("/callback", async (req, res) => {
   const code = req.query.code || null;
   const state = req.query.state || null;
 
   if (state === null) {
+    console.log("State mismatch error during callback.");
     return res.redirect(
-      '/#' + querystring.stringify({ error: 'state_mismatch' })
+      "/#" + querystring.stringify({ error: "state_mismatch" })
     );
   }
 
   const authOptions = {
-    method: 'post',
-    url: 'https://accounts.spotify.com/api/token',
+    method: "post",
+    url: "https://accounts.spotify.com/api/token",
     data: querystring.stringify({
       code: code,
       redirect_uri: REDIRECT_URI,
-      grant_type: 'authorization_code',
+      grant_type: "authorization_code",
     }),
     headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      Authorization: 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
+      "content-type": "application/x-www-form-urlencoded",
+      Authorization:
+        "Basic " +
+        Buffer.from(CLIENT_ID + ":" + CLIENT_SECRET).toString("base64"),
     },
   };
 
   try {
+    console.log("Requesting access token with authorization code:", code);
     const response = await axios(authOptions);
     const access_token = response.data.access_token;
     const refresh_token = response.data.refresh_token;
+    console.log("Received access token and refresh token from Spotify.");
 
     res.redirect(
       `https://spotify-frontend-sigma.vercel.app/#${querystring.stringify({
@@ -79,33 +89,36 @@ app.get('/callback', async (req, res) => {
       })}`
     );
   } catch (error) {
-    console.error(error);
-    res.redirect('/#' + querystring.stringify({ error: 'invalid_token' }));
+    console.error("Error retrieving access token:", error);
+    res.redirect("/#" + querystring.stringify({ error: "invalid_token" }));
   }
 });
 
-app.get('/refresh_token', async (req, res) => {
+app.get("/refresh_token", async (req, res) => {
   const refresh_token = req.query.refresh_token;
+  console.log("Received request to refresh token:", refresh_token);
+
   const authOptions = {
-    method: 'post',
-    url: 'https://accounts.spotify.com/api/token',
+    method: "post",
+    url: "https://accounts.spotify.com/api/token",
     data: querystring.stringify({
-      grant_type: 'refresh_token',
+      grant_type: "refresh_token",
       refresh_token: refresh_token,
     }),
     headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      Authorization: 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'),
+      "content-type": "application/x-www-form-urlencoded",
+      Authorization:
+        "Basic " +
+        Buffer.from(CLIENT_ID + ":" + CLIENT_SECRET).toString("base64"),
     },
   };
 
   try {
     const response = await axios(authOptions);
-    res.send({
-      access_token: response.data.access_token,
-    });
+    console.log("Refreshed access token successfully.");
+    res.send({ access_token: response.data.access_token });
   } catch (error) {
-    console.error(error);
+    console.error("Error refreshing access token:", error);
     res.status(400).send(error);
   }
 });
