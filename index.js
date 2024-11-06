@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    // origin: "https://spotify-frontend-sigma.vercel.app",
-    origin: "http://localhost:3000",
+    origin: "https://spotify-frontend-sigma.vercel.app",
+    // origin: "http://localhost:3000",
     credentials: true,
   })
 );
@@ -105,8 +105,8 @@ app.get("/callback", async (req, res) => {
 
     // Redirect to frontend with tokens in the hash
     res.redirect(
-      // `https://spotify-frontend-sigma.vercel.app/#${querystring.stringify({
-        `http://localhost:3000/#${querystring.stringify({
+      `https://spotify-frontend-sigma.vercel.app/#${querystring.stringify({
+        // `http://localhost:3000/#${querystring.stringify({
         access_token: access_token,
         refresh_token: refresh_token,
       })}`
