@@ -123,7 +123,6 @@ app.get("/callback", async (req, res) => {
 // Route: /refresh_token
 app.get("/refresh_token", async (req, res) => {
   const refresh_token = req.query.refresh_token;
-  console.log("Received request to refresh token:", refresh_token);
 
   if (!refresh_token) {
     return res.status(400).send({ error: "refresh_token_missing" });
@@ -146,8 +145,15 @@ app.get("/refresh_token", async (req, res) => {
 
   try {
     const response = await axios(authOptions);
-    console.log("Refreshed access token successfully.");
-    res.send({ access_token: response.data.access_token });
+    const newAccessToken = response.data.access_token;
+
+    // If a new refresh token is returned, include it in the response
+    const newRefreshToken = response.data.refresh_token || null;
+
+    res.send({
+      access_token: newAccessToken,
+      ...(newRefreshToken && { refresh_token: newRefreshToken }),
+    });
   } catch (error) {
     console.error(
       "Error refreshing access token:",
@@ -160,6 +166,7 @@ app.get("/refresh_token", async (req, res) => {
       );
   }
 });
+
 
 // Start the Server
 app.listen(PORT, () => {
